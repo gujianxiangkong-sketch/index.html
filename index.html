@@ -115,6 +115,10 @@
         height: 55px;
         cursor: pointer;
         background-color: var(--cell-empty);
+        transition: filter 0.2s;
+    }
+    table.timetable td:active {
+        filter: brightness(0.9);
     }
 
     .lunch-row td {
@@ -127,7 +131,7 @@
 
     .subject-name {
         font-weight: bold;
-        color: #d63031;
+        color: #2c3e50; /* どんなパステルカラー背景でも読みやすいダークカラーに変更 */
         font-size: 0.85em;
         line-height: 1.1;
     }
@@ -302,7 +306,7 @@
 </div>
 
 <script>
-    const STORAGE_KEY = 'competence_app_data'; // 保存用のキー
+    const STORAGE_KEY = 'competence_app_data';
 
     const competenceMeta = {
         gen1: { label: "知の活用力", target: 400, type: "汎用" },
@@ -324,15 +328,35 @@
     ];
     const days = ["月", "火", "水", "木", "金"];
     
+    // 科目名から色を生成する関数（パステルカラーパレット）
+    function getSubjectColor(subjectName) {
+        if (!subjectName) return "var(--cell-filled)";
+        
+        // 文字列からハッシュ値を生成
+        let hash = 0;
+        for (let i = 0; i < subjectName.length; i++) {
+            hash = subjectName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        // 見やすいパステルカラーのパレット
+        const colors = [
+            "#ffadad", "#ffd6a5", "#fdffb6", "#caffbf", 
+            "#9bf6ff", "#a0c4ff", "#bdb2ff", "#ffc6ff", 
+            "#ffe5d9", "#d8e2dc", "#fcd5ce", "#e8e8e4",
+            "#b9fbc0", "#8eecf5", "#f1c0e8", "#ffcfd2"
+        ];
+        
+        const index = Math.abs(hash) % colors.length;
+        return colors[index];
+    }
+
     let scheduleData = {}; 
     let currentTermIndex = 0;
 
-    // ローカルストレージにデータを保存
     function saveToStorage() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(scheduleData));
     }
 
-    // ローカルストレージからデータを読み込み
     function loadFromStorage() {
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (savedData) {
@@ -353,7 +377,7 @@
     }
 
     function init() {
-        loadFromStorage(); // 起動時にデータを読み込む
+        loadFromStorage();
 
         const tabContainer = document.getElementById('term-tabs');
         terms.forEach((name, i) => {
@@ -422,7 +446,8 @@
                         let span = info.endPeriod - slot.id + 1;
                         if (slot.id <= 2 && info.endPeriod >= 3) span++;
                         td.rowSpan = span;
-                        td.style.backgroundColor = "var(--cell-filled)";
+                        // ★自動で割り当てた色を背景に設定
+                        td.style.backgroundColor = getSubjectColor(info.subject);
                         td.innerHTML = `<div class="subject-name">${info.subject}</div><div class="subject-memo">${info.memo}</div>`;
                     }
                     td.onclick = () => openClassModal(d, slot.id);
@@ -442,6 +467,8 @@
         termData.others.forEach((info, index) => {
             const div = document.createElement('div');
             div.className = 'other-item';
+            // ★リストの左側に時間割と同じ色を配置
+            div.style.borderLeft = `6px solid ${getSubjectColor(info.subject)}`;
             div.innerHTML = `<div><div class="subject-name">${info.subject}</div><div class="subject-memo">${info.memo}</div></div><div style="font-size:0.8em; color:var(--accent-blue);">編集</div>`;
             div.onclick = () => openOtherModal(index);
             othersList.appendChild(div);
@@ -522,7 +549,7 @@
 
         renderView();
         updateView();
-        saveToStorage(); // 保存処理を追加
+        saveToStorage();
         closeModal();
     }
 
@@ -541,7 +568,7 @@
 
         renderView();
         updateView();
-        saveToStorage(); // 保存処理を追加
+        saveToStorage();
         closeModal();
     }
 
@@ -573,7 +600,6 @@
         });
     }
 
-    // データを完全にリセットする機能（念のため追加）
     function clearAllData() {
         if(confirm("保存されているすべての学期のデータを削除します。よろしいですか？")) {
             localStorage.removeItem(STORAGE_KEY);
@@ -583,7 +609,6 @@
         }
     }
 
-    // 起動
     init();
 
 </script>
