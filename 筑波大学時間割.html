@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>履修・コンピテンス管理システム</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap');
+
+    :root {
+        --bg-color: #f0f4f8;
+        --card-bg: #ffffff;
+        --text-main: #2d3436;
+        --accent-blue: #0984e3;
+        --accent-pink: #e84393;
+        --accent-yellow: #fdcb6e;
+        --accent-green: #00b894;
+        --cell-empty: #dfe6e9;
+        --cell-filled: #fab1a0;
+        --lunch-color: #f1f2f6;
+        --progress-bg: #f1f2f6;
+    }
+
+    body {
+        font-family: 'Nunito', 'Hiragino Maru Gothic ProN', 'Rounded M+ 1c', 'Meiryo', sans-serif;
+        margin: 0;
+        padding: 10px;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+    }
+    
+    h1 {
+        text-align: center;
+        color: var(--accent-blue);
+        font-size: 1.1em;
+        margin-bottom: 10px;
+    }
+
+    /* 学期切り替えタブ */
+    .term-selector-container {
+        margin-bottom: 15px;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 5px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .term-tabs {
+        display: inline-flex;
+        gap: 5px;
+    }
+    .term-tab {
+        padding: 8px 12px;
+        background: #fff;
+        border-radius: 20px;
+        font-size: 0.75em;
+        font-weight: bold;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .term-tab.active {
+        background: var(--accent-blue);
+        color: #fff;
+        border-color: var(--accent-blue);
+    }
+
+    .container {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    @media (min-width: 768px) {
+        .container { flex-direction: row; }
+        .timetable-wrapper { flex: 2.5; }
+        .summary-wrapper { flex: 1.2; }
+    }
+
+    .timetable-wrapper, .summary-wrapper {
+        background: var(--card-bg);
+        padding: 10px;
+        border-radius: 15px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    }
+
+    table.timetable {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: separate;
+        border-spacing: 2px;
+    }
+
+    table.timetable th, table.timetable td {
+        border-radius: 6px;
+        text-align: center;
+        vertical-align: middle;
+        overflow: hidden;
+        word-wrap: break-word;
+        font-size: 0.7em;
+    }
+
+    .col-time { width: 18%; font-size: 0.55em; background: #f9f9f9; color: #636e72; font-weight: bold; }
+    .col-day { width: 16.4%; }
+
+    table.timetable th {
+        background-color: var(--accent-blue);
+        color: white;
+        padding: 5px 0;
+    }
+
+    table.timetable td {
+        height: 55px;
+        cursor: pointer;
+        background-color: var(--cell-empty);
+    }
+
+    .lunch-row td {
+        height: 20px;
+        background-color: var(--lunch-color);
+        font-size: 0.6em;
+        color: #b2bec3;
+        cursor: default;
+    }
+
+    .subject-name {
+        font-weight: bold;
+        color: #d63031;
+        font-size: 0.85em;
+        line-height: 1.1;
+    }
+    .subject-memo {
+        font-size: 0.65em;
+        color: #636e72;
+    }
+
+    /* その他（時間割外）エリア */
+    .others-section {
+        margin-top: 20px;
+        border-top: 2px dashed #dfe6e9;
+        padding-top: 15px;
+    }
+    .others-title {
+        font-weight: bold;
+        color: var(--accent-blue);
+        font-size: 0.9em;
+        margin-bottom: 10px;
+    }
+    .others-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .other-item {
+        background: #fdfbfb;
+        border: 1px solid #eee;
+        padding: 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.85em;
+        transition: background 0.2s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .other-item:hover { background: #f1f2f6; }
+    .btn-add-other {
+        width: 100%;
+        padding: 12px;
+        text-align: center;
+        background: #e0f7fa;
+        color: #0097a7;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+        margin-top: 10px;
+        transition: background 0.2s;
+    }
+    .btn-add-other:hover { background: #b2ebf2; }
+
+    /* 集計エリア */
+    .summary-title { font-weight: bold; color: var(--accent-blue); margin: 12px 0 6px 0; font-size: 0.9em; border-left: 4px solid var(--accent-blue); padding-left: 8px; }
+    .summary-item { padding: 8px 10px; margin-bottom: 8px; background-color: #f8f9fa; border-radius: 10px; font-size: 0.8em; }
+    .item-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-weight: bold; }
+    
+    .progress-bar-bg { width: 100%; height: 6px; background-color: var(--progress-bg); border-radius: 3px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; width: 0%; background-color: var(--accent-yellow); transition: width 0.5s ease; }
+    .progress-bar-fill.achieved { background-color: var(--accent-green); }
+
+    /* モーダル */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #fff; padding: 20px; border-radius: 20px; width: 90%; max-width: 380px; max-height: 90vh; overflow-y: auto; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 0.8em; font-weight: bold; margin-bottom: 3px; color: #636e72; }
+    .form-group input, .form-group select { width: 100%; padding: 8px; border: 2px solid #f1f2f6; border-radius: 8px; font-size: 0.95em; box-sizing: border-box; outline: none; }
+    .point-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 10px; }
+
+    .btn-container { display: flex; gap: 8px; margin-top: 15px; }
+    button { flex: 1; padding: 10px 0; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+    .btn-save { background: var(--accent-green); color: #fff; flex: 1.5; }
+    .btn-delete { background: var(--accent-pink); color: #fff; }
+
+    /* データクリアボタン */
+    .btn-clear-all {
+        display: block;
+        width: 100%;
+        margin-top: 20px;
+        padding: 10px;
+        background: #dfe6e9;
+        color: #636e72;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.8em;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+
+<h1>履修・コンピテンス管理</h1>
+
+<div class="term-selector-container">
+    <div class="term-tabs" id="term-tabs"></div>
+</div>
+
+<div class="container">
+    <div class="timetable-wrapper">
+        <div id="current-term-label" style="text-align:center; font-weight:bold; color:var(--accent-blue); margin-bottom:5px; font-size:0.9em;"></div>
+        
+        <table class="timetable" id="timetable">
+            <thead>
+                <tr>
+                    <th class="col-time">時間</th>
+                    <th class="col-day">月</th><th class="col-day">火</th><th class="col-day">水</th><th class="col-day">木</th><th class="col-day">金</th>
+                </tr>
+            </thead>
+            <tbody id="timetable-body"></tbody>
+        </table>
+
+        <div class="others-section">
+            <div class="others-title">時間割外の活動（資格・課外活動など）</div>
+            <div id="others-list" class="others-list"></div>
+            <button class="btn-add-other" onclick="openOtherModal(-1)">＋ 新しい活動を追加</button>
+        </div>
+    </div>
+
+    <div class="summary-wrapper">
+        <div class="summary-title" style="margin-top:0; border-left-color:var(--accent-yellow);">全学期累計</div>
+        <div class="summary-item" style="background:var(--accent-yellow); color:#fff; margin-bottom:15px;">
+            <div class="item-header">
+                <span>合計単位数</span>
+                <span id="sum-credits">0</span>
+            </div>
+        </div>
+        <div id="competence-summary"></div>
+
+        <button class="btn-clear-all" onclick="clearAllData()">🗑 すべてのデータをリセット</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+    <div class="modal-content">
+        <h3 id="modal-title" style="margin:0 0 10px 0; text-align:center; color:var(--accent-blue); font-size:1em;">登録</h3>
+        
+        <input type="hidden" id="edit-type">
+        <input type="hidden" id="edit-day">
+        <input type="hidden" id="edit-start">
+        <input type="hidden" id="edit-other-index">
+        
+        <div class="form-group">
+            <label>項目名（科目・活動名）</label>
+            <input type="text" id="input-subject" placeholder="入力してください">
+        </div>
+        <div class="form-group">
+            <label>メモ（教室・詳細など）</label>
+            <input type="text" id="input-memo" placeholder="詳細など">
+        </div>
+
+        <div style="display:flex; gap:10px;" id="form-group-timetable-only">
+            <div class="form-group" style="flex:1;">
+                <label>終了限</label>
+                <select id="input-end-period"></select>
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>単位数</label>
+                <input type="number" id="input-credits" step="0.5" value="0">
+            </div>
+        </div>
+
+        <div class="summary-title">獲得ポイント</div>
+        <div class="point-grid" id="modal-point-grid"></div>
+
+        <div class="btn-container">
+            <button class="btn-delete" onclick="deleteData()">削除</button>
+            <button style="background:#b2bec3; color:#fff;" onclick="closeModal()">戻る</button>
+            <button class="btn-save" onclick="saveData()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'competence_app_data'; // 保存用のキー
+
+    const competenceMeta = {
+        gen1: { label: "知の活用力", target: 400, type: "汎用" },
+        gen2: { label: "マネジメント能力", target: 250, type: "汎用" },
+        gen3: { label: "コミュニケーション能力", target: 250, type: "汎用" },
+        gen4: { label: "チームワーク力", target: 250, type: "汎用" },
+        gen5: { label: "国際性", target: 250, type: "汎用" },
+        pro1: { label: "研究力", target: 700, type: "専門" },
+        pro2: { label: "専門知識", target: 700, type: "専門" },
+        pro3: { label: "倫理観", target: 200, type: "専門" }
+    };
+
+    const terms = ["1年前A", "1年前B", "1年前C", "1年後A", "1年後B", "1年後C", "2年前A", "2年前B", "2年前C", "2年後A", "2年後B", "2年後C"];
+    const timeSlots = [
+        { id: 1, label: "1限", time: "8:40-9:55" }, { id: 2, label: "2限", time: "10:10-11:25" },
+        { id: "lunch", label: "昼休", time: "11:25-12:15" },
+        { id: 3, label: "3限", time: "12:15-13:30" }, { id: 4, label: "4限", time: "13:45-15:00" },
+        { id: 5, label: "5限", time: "15:15-16:30" }, { id: 6, label: "6限", time: "16:45-18:00" }
+    ];
+    const days = ["月", "火", "水", "木", "金"];
+    
+    let scheduleData = {}; 
+    let currentTermIndex = 0;
+
+    // ローカルストレージにデータを保存
+    function saveToStorage() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(scheduleData));
+    }
+
+    // ローカルストレージからデータを読み込み
+    function loadFromStorage() {
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            try {
+                scheduleData = JSON.parse(savedData);
+            } catch (e) {
+                console.error("データの読み込みに失敗しました", e);
+                scheduleData = {};
+            }
+        }
+    }
+
+    function getTermData(index) {
+        if (!scheduleData[index]) {
+            scheduleData[index] = { classes: {}, others: [] };
+        }
+        return scheduleData[index];
+    }
+
+    function init() {
+        loadFromStorage(); // 起動時にデータを読み込む
+
+        const tabContainer = document.getElementById('term-tabs');
+        terms.forEach((name, i) => {
+            const btn = document.createElement('div');
+            btn.className = `term-tab ${i === 0 ? 'active' : ''}`;
+            btn.innerText = name;
+            btn.onclick = () => switchTerm(i);
+            tabContainer.appendChild(btn);
+        });
+
+        const summaryArea = document.getElementById('competence-summary');
+        let currentType = "";
+        Object.entries(competenceMeta).forEach(([key, meta]) => {
+            if (currentType !== meta.type) {
+                currentType = meta.type;
+                const title = document.createElement('div');
+                title.className = "summary-title";
+                title.innerText = meta.type + "コンピテンス";
+                summaryArea.appendChild(title);
+            }
+            const item = document.createElement('div');
+            item.className = "summary-item";
+            item.innerHTML = `<div class="item-header"><span>${meta.label}</span><span><span id="sum-${key}">0</span> / ${meta.target}</span></div><div class="progress-bar-bg"><div id="bar-${key}" class="progress-bar-fill"></div></div>`;
+            summaryArea.appendChild(item);
+        });
+
+        const modalGrid = document.getElementById('modal-point-grid');
+        Object.entries(competenceMeta).forEach(([key, meta]) => {
+            const group = document.createElement('div');
+            group.className = "form-group";
+            group.innerHTML = `<label>${meta.label.substring(0,4)}</label><input type="number" id="input-${key}" value="0">`;
+            modalGrid.appendChild(group);
+        });
+
+        renderView();
+        updateView();
+    }
+
+    function switchTerm(index) {
+        currentTermIndex = index;
+        document.querySelectorAll('.term-tab').forEach((t, i) => t.className = `term-tab ${i === index ? 'active' : ''}`);
+        renderView();
+    }
+
+    function renderView() {
+        document.getElementById('current-term-label').innerText = terms[currentTermIndex] + " のスケジュール";
+        const termData = getTermData(currentTermIndex);
+        
+        // 時間割の描画
+        const tbody = document.getElementById('timetable-body');
+        tbody.innerHTML = "";
+        timeSlots.forEach((slot) => {
+            const tr = document.createElement('tr');
+            if (slot.id === "lunch") tr.className = "lunch-row";
+            const th = document.createElement('td');
+            th.className = "col-time";
+            th.innerHTML = `${slot.label}<br>${slot.time}`;
+            tr.appendChild(th);
+
+            if (slot.id !== "lunch") {
+                for (let d = 0; d < days.length; d++) {
+                    if (isOccupied(d, slot.id, termData.classes)) continue;
+                    const td = document.createElement('td');
+                    const info = termData.classes[`${d}-${slot.id}`];
+                    if (info) {
+                        let span = info.endPeriod - slot.id + 1;
+                        if (slot.id <= 2 && info.endPeriod >= 3) span++;
+                        td.rowSpan = span;
+                        td.style.backgroundColor = "var(--cell-filled)";
+                        td.innerHTML = `<div class="subject-name">${info.subject}</div><div class="subject-memo">${info.memo}</div>`;
+                    }
+                    td.onclick = () => openClassModal(d, slot.id);
+                    tr.appendChild(td);
+                }
+            } else {
+                const td = document.createElement('td');
+                td.colSpan = 5; td.innerText = "休憩";
+                tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+        });
+
+        // その他の描画
+        const othersList = document.getElementById('others-list');
+        othersList.innerHTML = "";
+        termData.others.forEach((info, index) => {
+            const div = document.createElement('div');
+            div.className = 'other-item';
+            div.innerHTML = `<div><div class="subject-name">${info.subject}</div><div class="subject-memo">${info.memo}</div></div><div style="font-size:0.8em; color:var(--accent-blue);">編集</div>`;
+            div.onclick = () => openOtherModal(index);
+            othersList.appendChild(div);
+        });
+    }
+
+    function isOccupied(day, period, classesData) {
+        for (let p = 1; p < period; p++) {
+            const info = classesData[`${day}-${p}`];
+            if (info && info.endPeriod >= period) return true;
+        }
+        return false;
+    }
+
+    function openClassModal(day, period) {
+        document.getElementById('modal').style.display = 'flex';
+        document.getElementById('edit-type').value = 'class';
+        document.getElementById('edit-day').value = day;
+        document.getElementById('edit-start').value = period;
+        document.getElementById('form-group-timetable-only').style.display = 'flex';
+        document.getElementById('modal-title').innerText = `${terms[currentTermIndex]} ${days[day]}曜${period}限`;
+
+        const endSelect = document.getElementById('input-end-period');
+        endSelect.innerHTML = "";
+        for (let i = period; i <= 6; i++) {
+            const opt = document.createElement('option');
+            opt.value = i; opt.innerText = `${i}限まで`;
+            endSelect.appendChild(opt);
+        }
+
+        const data = getTermData(currentTermIndex).classes[`${day}-${period}`] || { subject: "", memo: "", endPeriod: period, credits: 0 };
+        fillModalInputs(data);
+    }
+
+    function openOtherModal(index) {
+        document.getElementById('modal').style.display = 'flex';
+        document.getElementById('edit-type').value = 'other';
+        document.getElementById('edit-other-index').value = index;
+        document.getElementById('form-group-timetable-only').style.display = 'none';
+        document.getElementById('modal-title').innerText = index === -1 ? "時間割外の項目を追加" : "項目の編集";
+
+        const data = index === -1 ? { subject: "", memo: "", credits: 0 } : getTermData(currentTermIndex).others[index];
+        fillModalInputs(data);
+    }
+
+    function fillModalInputs(data) {
+        document.getElementById('input-subject').value = data.subject || "";
+        document.getElementById('input-memo').value = data.memo || "";
+        document.getElementById('input-end-period').value = data.endPeriod || 1;
+        document.getElementById('input-credits').value = data.credits || 0;
+        Object.keys(competenceMeta).forEach(k => document.getElementById(`input-${k}`).value = data[k] || 0);
+    }
+
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+    function saveData() {
+        const type = document.getElementById('edit-type').value;
+        const termData = getTermData(currentTermIndex);
+        
+        const data = {
+            subject: document.getElementById('input-subject').value,
+            memo: document.getElementById('input-memo').value
+        };
+        Object.keys(competenceMeta).forEach(k => data[k] = parseInt(document.getElementById(`input-${k}`).value) || 0);
+
+        if (type === 'class') {
+            const day = document.getElementById('edit-day').value;
+            const start = document.getElementById('edit-start').value;
+            data.endPeriod = parseInt(document.getElementById('input-end-period').value);
+            data.credits = parseFloat(document.getElementById('input-credits').value) || 0;
+            termData.classes[`${day}-${start}`] = data;
+        } else {
+            data.credits = 0; 
+            const idx = parseInt(document.getElementById('edit-other-index').value);
+            if (idx === -1) termData.others.push(data);
+            else termData.others[idx] = data;
+        }
+
+        renderView();
+        updateView();
+        saveToStorage(); // 保存処理を追加
+        closeModal();
+    }
+
+    function deleteData() {
+        const type = document.getElementById('edit-type').value;
+        const termData = getTermData(currentTermIndex);
+
+        if (type === 'class') {
+            const day = document.getElementById('edit-day').value;
+            const start = document.getElementById('edit-start').value;
+            delete termData.classes[`${day}-${start}`];
+        } else {
+            const idx = parseInt(document.getElementById('edit-other-index').value);
+            if (idx !== -1) termData.others.splice(idx, 1);
+        }
+
+        renderView();
+        updateView();
+        saveToStorage(); // 保存処理を追加
+        closeModal();
+    }
+
+    function updateView() {
+        let total = { credits: 0, gen1: 0, gen2: 0, gen3: 0, gen4: 0, gen5: 0, pro1: 0, pro2: 0, pro3: 0 };
+        
+        Object.values(scheduleData).forEach(term => {
+            if(term.classes) {
+                Object.values(term.classes).forEach(d => {
+                    Object.keys(total).forEach(k => total[k] += (d[k] || 0));
+                });
+            }
+            if(term.others) {
+                term.others.forEach(d => {
+                    Object.keys(competenceMeta).forEach(k => total[k] += (d[k] || 0));
+                });
+            }
+        });
+
+        document.getElementById('sum-credits').innerText = total.credits;
+        Object.entries(competenceMeta).forEach(([key, meta]) => {
+            const val = total[key];
+            const percent = Math.min((val / meta.target) * 100, 100);
+            document.getElementById(`sum-${key}`).innerText = val;
+            const bar = document.getElementById(`bar-${key}`);
+            bar.style.width = percent + "%";
+            if (val >= meta.target) bar.classList.add('achieved');
+            else bar.classList.remove('achieved');
+        });
+    }
+
+    // データを完全にリセットする機能（念のため追加）
+    function clearAllData() {
+        if(confirm("保存されているすべての学期のデータを削除します。よろしいですか？")) {
+            localStorage.removeItem(STORAGE_KEY);
+            scheduleData = {};
+            renderView();
+            updateView();
+        }
+    }
+
+    // 起動
+    init();
+
+</script>
+
+</body>
+</html>
