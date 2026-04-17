@@ -408,7 +408,7 @@
         Object.entries(competenceMeta).forEach(([key, meta]) => {
             const group = document.createElement('div');
             group.className = "form-group";
-            group.innerHTML = `<label>${meta.label.substring(0,6)}</label><input type="number" id="input-${key}" value="0">`;
+            group.innerHTML = `<label>${meta.label.substring(0,9)}</label><input type="number" id="input-${key}" value="0">`;
             modalGrid.appendChild(group);
         });
 
